@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biomarker Quiz</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --bg-color: #ecf0f1;
+            --btn-color: #3498db;
+            --success-color: #2ecc71;
+            --error-color: #e74c3c;
+            --text-color: #ffffff;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--primary-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            background: white;
+            padding: 30px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 1.2rem;
+            color: #7f8c8d;
+        }
+
+        #progress {
+            font-size: 0.9rem;
+            color: #95a5a6;
+            margin-bottom: 15px;
+        }
+
+        #biomarker-display {
+            font-size: 1.6rem;
+            font-weight: bold;
+            margin: 20px 0 30px;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        button {
+            background-color: var(--btn-color);
+            color: var(--text-color);
+            border: none;
+            padding: 16px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            touch-action: manipulation; /* Verhindert Doppeltipp-Zoom auf Handys */
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .correct {
+            background-color: var(--success-color) !important;
+        }
+
+        .wrong {
+            background-color: var(--error-color) !important;
+            animation: shake 0.4s;
+        }
+
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+
+        #feedback-msg {
+            margin-top: 15px;
+            font-weight: bold;
+            min-height: 24px;
+        }
+
+        #end-screen {
+            display: none;
+        }
+
+        .celebrate {
+            font-size: 4rem;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container" id="quiz-container">
+        <h2>Ordne den Biomarker zu:</h2>
+        <div id="progress">Frage 1 / X</div>
+        
+        <div id="biomarker-display">Lade...</div>
+
+        <div class="btn-grid">
+            <button onclick="checkAnswer('Neuroendokrin', this)">Neuroendokrin</button>
+            <button onclick="checkAnswer('Immunologisch', this)">Immunologisch</button>
+            <button onclick="checkAnswer('Metabolisch', this)">Metabolisch</button>
+            <button onclick="checkAnswer('Kardiovaskulär', this)">Kardiovaskulär</button>
+            <button onclick="checkAnswer('Anthropometrisch', this)">Anthropometrisch</button>
+        </div>
+
+        <div id="feedback-msg"></div>
+    </div>
+
+    <div class="app-container" id="end-screen">
+        <p class="celebrate">🎉</p>
+        <h2>Phänomenal!</h2>
+        <p>Du hast alle Biomarker erfolgreich den richtigen Kategorien zugeordnet.</p>
+        <button onclick="location.reload()" style="margin-top: 20px; width: 100%;">Nochmal spielen</button>
+    </div>
+
+    <script>
+        // Datenbasis aus der Tabelle (teilweise auf Deutsch übersetzt für den Vortrag)
+        const allBiomarkers = [
+            // Neuroendokrin
+            { name: "Cortisol", category: "Neuroendokrin" },
+            { name: "Dehydroepiandrosteron (DHEA)", category: "Neuroendokrin" },
+            { name: "Epinephrin (Adrenalin)", category: "Neuroendokrin" },
+            { name: "Norepinephrin (Noradrenalin)", category: "Neuroendokrin" },
+            { name: "Dopamin", category: "Neuroendokrin" },
+            { name: "Aldosteron", category: "Neuroendokrin" },
+            // Immunologisch
+            { name: "Interleukin-6", category: "Immunologisch" },
+            { name: "Tumornekrosefaktor-alpha", category: "Immunologisch" },
+            { name: "C-reaktives Protein (CRP)", category: "Immunologisch" },
+            { name: "Insulin-like growth factor-1", category: "Immunologisch" },
+            { name: "Fibrinogen", category: "Immunologisch" },
+            // Metabolisch
+            { name: "HDL Cholesterin", category: "Metabolisch" },
+            { name: "LDL Cholesterin", category: "Metabolisch" },
+            { name: "Triglyceride", category: "Metabolisch" },
+            { name: "Glykosyliertes Hämoglobin (HbA1c)", category: "Metabolisch" },
+            { name: "Glukose", category: "Metabolisch" },
+            { name: "Insulin", category: "Metabolisch" },
+            { name: "Albumin", category: "Metabolisch" },
+            { name: "Kreatinin", category: "Metabolisch" },
+            { name: "Homocystein", category: "Metabolisch" },
+            // Kardiovaskulär (& Respiratorisch)
+            { name: "Systolischer Blutdruck", category: "Kardiovaskulär" },
+            { name: "Diastolischer Blutdruck", category: "Kardiovaskulär" },
+            { name: "Peak Expiratory Flow", category: "Kardiovaskulär" },
+            { name: "Herzfrequenz/Puls", category: "Kardiovaskulär" },
+            // Anthropometrisch
+            { name: "Taille-Hüft-Quotient", category: "Anthropometrisch" },
+            { name: "Body-Mass-Index (BMI)", category: "Anthropometrisch" }
+        ];
+
+        let quizData = [];
+        let currentIndex = 0;
+        let isWaitingForNext = false;
+
+        function initQuiz() {
+            // Mische die Liste zufällig
+            quizData = [...allBiomarkers].sort(() => Math.random() - 0.5);
+            currentIndex = 0;
+            showQuestion();
+        }
+
+        function showQuestion() {
+            document.getElementById('progress').innerText = `Biomarker ${currentIndex + 1} von ${quizData.length}`;
+            document.getElementById('biomarker-display').innerText = quizData[currentIndex].name;
+            document.getElementById('feedback-msg').innerText = "";
+            document.getElementById('feedback-msg').style.color = "inherit";
+            
+            // Setze alle Buttons zurück
+            const buttons = document.querySelectorAll('.btn-grid button');
+            buttons.forEach(btn => {
+                btn.className = "";
+                btn.disabled = false;
+            });
+            isWaitingForNext = false;
+        }
+
+        function checkAnswer(selectedCategory, btnElement) {
+            if (isWaitingForNext) return; // Verhindert Klicks während der Pause
+
+            const correctCategory = quizData[currentIndex].category;
+            const feedbackEl = document.getElementById('feedback-msg');
+
+            if (selectedCategory === correctCategory) {
+                // RICHTIG
+                btnElement.classList.add('correct');
+                feedbackEl.innerText = "Richtig!";
+                feedbackEl.style.color = "var(--success-color)";
+                isWaitingForNext = true;
+
+                // Buttons sperren
+                document.querySelectorAll('.btn-grid button').forEach(b => b.disabled = true);
+
+                // Nach kurzer Zeit weiter zur nächsten Frage
+                setTimeout(() => {
+                    currentIndex++;
+                    if (currentIndex < quizData.length) {
+                        showQuestion();
+                    } else {
+                        showEndScreen();
+                    }
+                }, 1000); // 1 Sekunde Verzögerung
+            } else {
+                // FALSCH
+                btnElement.classList.add('wrong');
+                feedbackEl.innerText = "Leider falsch. Versuch es noch einmal!";
+                feedbackEl.style.color = "var(--error-color)";
+                
+                // Schüttel-Animation nach Ablauf zurücksetzen, damit sie wiederholbar ist
+                setTimeout(() => {
+                    btnElement.classList.remove('wrong');
+                }, 400);
+            }
+        }
+
+        function showEndScreen() {
+            document.getElementById('quiz-container').style.display = 'none';
+            document.getElementById('end-screen').style.display = 'block';
+        }
+
+        // Start
+        initQuiz();
+    </script>
+</body>
+</html>
